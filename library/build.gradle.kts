@@ -136,53 +136,67 @@ val javadocJar by tasks.creating(Jar::class) {
     archiveClassifier.value("javadoc")
 }
 
+// publishing {
+//     repositories {
+//         maven {
+//             url = uri(sonatypeStaging)
+
+//             credentials {
+//                 username = sonatypeUsernameEnv
+//                 password = sonatypePasswordEnv
+//             }
+//         }
+//     }
+
+//     publications.all {
+//         this as MavenPublication
+
+//         println(name)
+//         artifact(javadocJar)
+
+//         pom {
+//             name.set("dev.bluefalcon")
+//             description.set("Kotlin Multiplatform Bluetooth Library")
+//             url.set("https://github.com/reedyuk/blue-falcon")
+
+//             licenses {
+//                 license {
+//                     name.set("MIT License")
+//                     url.set("http://opensource.org/licenses/MIT")
+//                 }
+//             }
+
+//             developers {
+//                 developer {
+//                     id.set("Reedyuk")
+//                     name.set("Andrew Reed")
+//                     email.set("andrew_reed@hotmail.com")
+//                 }
+//             }
+
+//             scm {
+//                 url.set("https://github.com/reedyuk/blue-falcon")
+//                 connection.set("scm:git:git://git@github.com:reedyuk/blue-falcon.git")
+//                 developerConnection.set("scm:git:ssh://git@github.com:reedyuk/blue-falcon.git")
+//             }
+
+//         }
+//     }
+
+// }
+
 publishing {
     repositories {
         maven {
-            url = uri(sonatypeStaging)
+            name = "bintray"
+            url = uri("https://api.bintray.com/maven/icerockdev/kotlin-libs/blue-falcon/;publish=1")
 
             credentials {
-                username = sonatypeUsernameEnv
-                password = sonatypePasswordEnv
+                username = System.getProperty("BINTRAY_USER")
+                password = System.getProperty("BINTRAY_KEY")
             }
         }
     }
-
-    publications.all {
-        this as MavenPublication
-
-        println(name)
-        artifact(javadocJar)
-
-        pom {
-            name.set("dev.bluefalcon")
-            description.set("Kotlin Multiplatform Bluetooth Library")
-            url.set("https://github.com/reedyuk/blue-falcon")
-
-            licenses {
-                license {
-                    name.set("MIT License")
-                    url.set("http://opensource.org/licenses/MIT")
-                }
-            }
-
-            developers {
-                developer {
-                    id.set("Reedyuk")
-                    name.set("Andrew Reed")
-                    email.set("andrew_reed@hotmail.com")
-                }
-            }
-
-            scm {
-                url.set("https://github.com/reedyuk/blue-falcon")
-                connection.set("scm:git:git://git@github.com:reedyuk/blue-falcon.git")
-                developerConnection.set("scm:git:ssh://git@github.com:reedyuk/blue-falcon.git")
-            }
-
-        }
-    }
-
 }
 
 signing {
