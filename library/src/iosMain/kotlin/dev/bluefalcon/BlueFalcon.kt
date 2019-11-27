@@ -1,8 +1,27 @@
 package dev.bluefalcon
 
-import platform.CoreBluetooth.*
-import platform.Foundation.*
+import platform.CoreBluetooth.CBCentralManager
+import platform.CoreBluetooth.CBCentralManagerDelegateProtocol
+import platform.CoreBluetooth.CBCentralManagerScanOptionAllowDuplicatesKey
+import platform.CoreBluetooth.CBCharacteristic
+import platform.CoreBluetooth.CBCharacteristicWriteWithResponse
+import platform.CoreBluetooth.CBManagerStatePoweredOff
+import platform.CoreBluetooth.CBManagerStatePoweredOn
+import platform.CoreBluetooth.CBManagerStateResetting
+import platform.CoreBluetooth.CBManagerStateUnauthorized
+import platform.CoreBluetooth.CBManagerStateUnknown
+import platform.CoreBluetooth.CBManagerStateUnsupported
+import platform.CoreBluetooth.CBPeripheral
+import platform.CoreBluetooth.CBPeripheralDelegateProtocol
+import platform.CoreBluetooth.CBService
+import platform.Foundation.NSError
+import platform.Foundation.NSNumber
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
+import platform.Foundation.dataUsingEncoding
 import platform.darwin.NSObject
+import platform.darwin.dispatch_get_main_queue
 
 actual class BlueFalcon actual constructor(
     private val context: ApplicationContext,
@@ -16,7 +35,7 @@ actual class BlueFalcon actual constructor(
     actual var isScanning: Boolean = false
 
     init {
-        centralManager = CBCentralManager(bluetoothPeripheralManager, null)
+        centralManager = CBCentralManager(bluetoothPeripheralManager, dispatch_get_main_queue())
     }
 
     actual fun connect(bluetoothPeripheral: BluetoothPeripheral) {
@@ -30,17 +49,19 @@ actual class BlueFalcon actual constructor(
     @Throws
     actual fun scan() {
         isScanning = true
-        when(centralManager.state) {
+        when (centralManager.state) {
             CBManagerStateUnknown -> throw BluetoothUnknownException()
             CBManagerStateResetting -> throw BluetoothResettingException()
             CBManagerStateUnsupported -> throw BluetoothUnsupportedException()
             CBManagerStateUnauthorized -> throw BluetoothPermissionException()
             CBManagerStatePoweredOff -> throw BluetoothNotEnabledException()
             CBManagerStatePoweredOn -> {
+                val options: Map<Any?, Any> =
+                    mapOf(CBCentralManagerScanOptionAllowDuplicatesKey to NSNumber(true))
                 if (serviceUUID != null) {
-                    centralManager.scanForPeripheralsWithServices(listOf(serviceUUID), null)
+                    centralManager.scanForPeripheralsWithServices(listOf(serviceUUID), options)
                 } else {
-                    centralManager.scanForPeripheralsWithServices(null, null)
+                    centralManager.scanForPeripheralsWithServices(null, options)
                 }
             }
         }
@@ -63,7 +84,10 @@ actual class BlueFalcon actual constructor(
         bluetoothCharacteristic: BluetoothCharacteristic,
         notify: Boolean
     ) {
-        bluetoothPeripheral.bluetoothDevice.setNotifyValue(notify, bluetoothCharacteristic.characteristic)
+        bluetoothPeripheral.bluetoothDevice.setNotifyValue(
+            notify,
+            bluetoothCharacteristic.characteristic
+        )
     }
 
     actual fun writeCharacteristic(
@@ -88,7 +112,7 @@ actual class BlueFalcon actual constructor(
         }
     }
 
-    inner class BluetoothPeripheralManager: NSObject(), CBCentralManagerDelegateProtocol {
+    inner class BluetoothPeripheralManager : NSObject(), CBCentralManagerDelegateProtocol {
         override fun centralManagerDidUpdateState(central: CBCentralManager) {
             when (central.state) {
                 CBManagerStateUnknown -> log("State 0 is .unknown")
@@ -108,7 +132,7 @@ actual class BlueFalcon actual constructor(
             RSSI: NSNumber
         ) {
             if (isScanning) {
-                log("Discovered device ${didDiscoverPeripheral.name}")
+                log("Discovered device $didDiscoverPeripheral")
                 val device = BluetoothPeripheral(didDiscoverPeripheral, rssiValue = RSSI.floatValue)
                 delegates.forEach {
                     it.didDiscoverDevice(device)
@@ -126,7 +150,11 @@ actual class BlueFalcon actual constructor(
             didConnectPeripheral.discoverServices(null)
         }
 
-        override fun centralManager(central: CBCentralManager, didDisconnectPeripheral: CBPeripheral, error: NSError?) {
+        override fun centralManager(
+            central: CBCentralManager,
+            didDisconnectPeripheral: CBPeripheral,
+            error: NSError?
+        ) {
             log("DidDisconnectPeripheral ${didDisconnectPeripheral.name}")
             val device = BluetoothPeripheral(didDisconnectPeripheral, rssiValue = null)
             delegates.forEach {
@@ -136,14 +164,14 @@ actual class BlueFalcon actual constructor(
 
     }
 
-    inner class PeripheralDelegate: NSObject(), CBPeripheralDelegateProtocol {
+    inner class PeripheralDelegate : NSObject(), CBPeripheralDelegateProtocol {
 
         override fun peripheral(
             peripheral: CBPeripheral,
             didDiscoverServices: NSError?
         ) {
             if (didDiscoverServices != null) {
-                println("Error with service discovery ${didDiscoverServices}")
+                log("Error with service discovery ${didDiscoverServices}")
             } else {
                 val device = BluetoothPeripheral(peripheral, rssiValue = null)
                 delegates.forEach {
@@ -163,7 +191,7 @@ actual class BlueFalcon actual constructor(
             error: NSError?
         ) {
             if (error != null) {
-                println("Error with characteristic discovery ${didDiscoverCharacteristicsForService}")
+                log("Error with characteristic discovery ${didDiscoverCharacteristicsForService}")
             }
             val device = BluetoothPeripheral(peripheral, rssiValue = null)
             delegates.forEach {
@@ -177,9 +205,9 @@ actual class BlueFalcon actual constructor(
             error: NSError?
         ) {
             if (error != null) {
-                println("Error with characteristic update ${error}")
+                log("Error with characteristic update ${error}")
             }
-            println("didUpdateValueForCharacteristic")
+            log("didUpdateValueForCharacteristic")
             val device = BluetoothPeripheral(peripheral, rssiValue = null)
             val characteristic = BluetoothCharacteristic(didUpdateValueForCharacteristic)
             delegates.forEach {
