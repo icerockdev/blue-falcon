@@ -1,7 +1,12 @@
 package dev.bluefalcon
 
 import android.Manifest
-import android.bluetooth.*
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -16,7 +21,8 @@ actual class BlueFalcon actual constructor(
     private val serviceUUID: String?
 ) {
     actual val delegates: MutableSet<BlueFalconDelegate> = mutableSetOf()
-    private val bluetoothManager: BluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothManager: BluetoothManager =
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val mBluetoothScanCallBack = BluetoothScanCallBack()
     private val mGattClientCallback = GattClientCallback()
     actual var isScanning: Boolean = false
@@ -60,7 +66,8 @@ actual class BlueFalcon actual constructor(
 
     private fun fetchCharacteristic(
         bluetoothCharacteristic: BluetoothCharacteristic,
-        gatt: BluetoothGatt): List<BluetoothCharacteristic> =
+        gatt: BluetoothGatt
+    ): List<BluetoothCharacteristic> =
         gatt.services.flatMap { service ->
             service.characteristics.filter {
                 it.uuid == bluetoothCharacteristic.characteristic.uuid
@@ -88,11 +95,12 @@ actual class BlueFalcon actual constructor(
             fetchCharacteristic(bluetoothCharacteristic, gatt)
                 .forEach {
                     gatt.setCharacteristicNotification(it.characteristic, notify)
-                    it.characteristic.descriptors.forEach {descriptor ->
-                        descriptor.value = if (notify) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else byteArrayOf(
-                            0x00,
-                            0x00
-                        )
+                    it.characteristic.descriptors.forEach { descriptor ->
+                        descriptor.value =
+                            if (notify) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else byteArrayOf(
+                                0x00,
+                                0x00
+                            )
                         gatt.writeDescriptor(descriptor)
                     }
                 }
@@ -117,7 +125,7 @@ actual class BlueFalcon actual constructor(
         mGattClientCallback.gattForDevice(bluetoothPeripheral.bluetoothDevice)?.requestMtu(mtuSize)
     }
 
-    inner class BluetoothScanCallBack: ScanCallback() {
+    inner class BluetoothScanCallBack : ScanCallback() {
 
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             addScanResult(result)
@@ -132,18 +140,20 @@ actual class BlueFalcon actual constructor(
         }
 
         private fun addScanResult(result: ScanResult?) {
-            result?.let { scanResult ->
-                scanResult.device?.let { device ->
-                    delegates.forEach {
-                        it.didDiscoverDevice(BluetoothPeripheral(device))
-                    }
-                }
+            val device = result?.device ?: return
+
+            val devicePeripheral = BluetoothPeripheral(device).apply {
+                rssi = result.rssi.toFloat()
             }
+
+            log("device $devicePeripheral")
+
+            delegates.forEach { it.didDiscoverDevice(devicePeripheral) }
         }
 
     }
 
-    inner class GattClientCallback: BluetoothGattCallback() {
+    inner class GattClientCallback : BluetoothGattCallback() {
 
         private val gatts: MutableList<BluetoothGatt> = mutableListOf()
 
@@ -215,20 +225,33 @@ actual class BlueFalcon actual constructor(
             }
         }
 
-        override fun onCharacteristicRead(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?, status: Int) {
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?,
+            status: Int
+        ) {
             handleCharacteristicValueChange(gatt, characteristic)
         }
 
-        override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?
+        ) {
             handleCharacteristicValueChange(gatt, characteristic)
         }
 
-        private fun handleCharacteristicValueChange(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
+        private fun handleCharacteristicValueChange(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?
+        ) {
             characteristic?.let { forcedCharacteristic ->
                 val characteristic = BluetoothCharacteristic(forcedCharacteristic)
                 gatt?.device?.let { bluetoothDevice ->
                     delegates.forEach {
-                        it.didCharacteristcValueChanged(BluetoothPeripheral(bluetoothDevice), characteristic)
+                        it.didCharacteristcValueChanged(
+                            BluetoothPeripheral(bluetoothDevice),
+                            characteristic
+                        )
                     }
                 }
             }
