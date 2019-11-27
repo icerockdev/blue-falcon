@@ -1,3 +1,7 @@
 package dev.bluefalcon
 
-actual fun log(message: String) = println(message)
+import platform.Foundation.*
+
+actual fun log(message: String) {
+    //NSLog(message)
+}
