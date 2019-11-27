@@ -4,9 +4,11 @@ import android.bluetooth.BluetoothDevice
 
 actual class BluetoothPeripheral(val bluetoothDevice: BluetoothDevice) {
     actual val name: String?
-        get() = bluetoothDevice.name ?: bluetoothDevice.address
+        get() = bluetoothDevice.name
+
     actual val services: List<BluetoothService>
         get() = deviceServices
+
     actual val uuid: String
         get() = bluetoothDevice.address
 
