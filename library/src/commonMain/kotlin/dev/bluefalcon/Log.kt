@@ -1,5 +1,8 @@
 package dev.bluefalcon
 
+import kotlin.native.concurrent.ThreadLocal
+
+@ThreadLocal
 object Log {
     var logger: Logger = DefaultConsoleLogger()
     var level: Level = Level.NONE
