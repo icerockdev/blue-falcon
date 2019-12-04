@@ -13,4 +13,6 @@ interface BlueFalconDelegate {
     )
     fun didRssiUpdate(bluetoothPeripheral: BluetoothPeripheral)
     fun didUpdateMTU(bluetoothPeripheral: BluetoothPeripheral)
+
+    fun scanDidFailed(error: Throwable)
 }

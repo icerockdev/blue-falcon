@@ -6,6 +6,7 @@ import java.nio.charset.Charset
 actual class BluetoothCharacteristic(val characteristic: BluetoothGattCharacteristic) {
     actual val name: String?
         get() = characteristic.uuid.toString()
+
     actual val value: String?
         get() = characteristic.value?.let { data ->
             return String(data, Charset.defaultCharset())

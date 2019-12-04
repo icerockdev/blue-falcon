@@ -29,5 +29,8 @@ expect class BlueFalcon(context: ApplicationContext, serviceUUID: String?) {
     )
 
     fun changeMTU(bluetoothPeripheral: BluetoothPeripheral, mtuSize: Int)
+}
 
+internal fun BlueFalcon.notifyDelegates(block: BlueFalconDelegate.() -> Unit) {
+    delegates.forEach { it.block() }
 }
